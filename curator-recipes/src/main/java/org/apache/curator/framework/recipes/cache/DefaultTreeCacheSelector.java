@@ -18,20 +18,17 @@
  */
 package org.apache.curator.framework.recipes.cache;
 
+import java.util.EnumSet;
+
 /**
  * Default TreeCache selector - returns true for all methods
  */
 public class DefaultTreeCacheSelector implements TreeCacheSelector
 {
-    @Override
-    public boolean traverseChildren(String fullPath)
-    {
-        return true;
-    }
+    private static final EnumSet<WatchType> ALL = EnumSet.allOf(WatchType.class);
 
     @Override
-    public boolean acceptChild(String fullPath)
-    {
-        return true;
+    public EnumSet<WatchType> shouldWatchNode(String fullPath) {
+        return ALL;
     }
 }

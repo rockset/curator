@@ -28,6 +28,7 @@ import org.apache.curator.utils.CloseableUtils;
 import org.apache.zookeeper.CreateMode;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import java.util.EnumSet;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -48,15 +49,14 @@ public class TestTreeCache extends BaseTestTreeCache
         TreeCacheSelector selector = new TreeCacheSelector()
         {
             @Override
-            public boolean traverseChildren(String fullPath)
+            public EnumSet<WatchType> shouldWatchNode(String fullPath)
             {
-                return !fullPath.equals("/root/n1-b/n2-b");
-            }
-
-            @Override
-            public boolean acceptChild(String fullPath)
-            {
-                return !fullPath.equals("/root/n1-c");
+                if (fullPath.equals("/root/n1-c")) {
+                    return EnumSet.noneOf(WatchType.class);
+                } else if (fullPath.equals("/root/n1-b/n2-b")) {
+                    return EnumSet.of(WatchType.DATA);
+                }
+                return EnumSet.allOf(WatchType.class);
             }
         };
         cache = buildWithListeners(TreeCache.newBuilder(client, "/root").setSelector(selector));

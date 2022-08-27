@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -228,19 +229,23 @@ public class TreeCache implements Closeable
 
         private void refresh() throws Exception
         {
-            if ((depth < maxDepth) && selector.traverseChildren(path))
+            Set<TreeCacheSelector.WatchType> toWatch = selector.shouldWatchNode(path);
+            if ((depth < maxDepth) && toWatch.contains(TreeCacheSelector.WatchType.CHILDREN))
             {
-                outstandingOps.addAndGet(2);
-                doRefreshData();
+                outstandingOps.addAndGet(1);
                 doRefreshChildren();
-            } else {
-                refreshData();
+            }
+            if (toWatch.contains(TreeCacheSelector.WatchType.DATA))
+            {
+                outstandingOps.addAndGet(1);
+                doRefreshData();
             }
         }
 
         private void refreshChildren() throws Exception
         {
-            if ((depth < maxDepth) && selector.traverseChildren(path))
+            Set<TreeCacheSelector.WatchType> toWatch = selector.shouldWatchNode(path);
+            if ((depth < maxDepth) && toWatch.contains(TreeCacheSelector.WatchType.CHILDREN))
             {
                 outstandingOps.incrementAndGet();
                 doRefreshChildren();
@@ -249,8 +254,12 @@ public class TreeCache implements Closeable
 
         private void refreshData() throws Exception
         {
-            outstandingOps.incrementAndGet();
-            doRefreshData();
+            Set<TreeCacheSelector.WatchType> toWatch = selector.shouldWatchNode(path);
+            if (toWatch.contains(TreeCacheSelector.WatchType.DATA))
+            {
+                outstandingOps.incrementAndGet();
+                doRefreshData();
+            }
         }
 
         private void doRefreshChildren() throws Exception
@@ -405,7 +414,7 @@ public class TreeCache implements Closeable
                     List<String> newChildren = new ArrayList<String>();
                     for ( String child : event.getChildren() )
                     {
-                        if ( !childMap.containsKey(child) && selector.acceptChild(ZKPaths.makePath(path, child)) )
+                        if ( !childMap.containsKey(child) && !selector.shouldWatchNode(ZKPaths.makePath(path, child)).isEmpty() )
                         {
                             newChildren.add(child);
                         }
